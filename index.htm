@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>لعبة قلب زينب | مسابقة الشخصية 💖</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
     <style>
@@ -185,20 +185,38 @@
             color: #ac7080;
         }
 
-        button {
+        .start-quiz-btn {
+            background: linear-gradient(120deg, #ff9a5e, #ff6f61);
+            border: none;
+            padding: 16px 32px;
+            font-size: 1.6rem;
             font-weight: bold;
-            touch-action: manipulation;
+            font-family: inherit;
+            color: white;
+            border-radius: 70px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transition: 0.2s;
+            display: inline-block;
         }
 
-        /* مساحة الأسئلة */
-        .quiz-container {
+        .start-quiz-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .quiz-area {
             margin-top: 20px;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .quiz-container {
             background: #fff5f0;
             border-radius: 40px;
             padding: 20px;
             text-align: right;
             box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            animation: fadeIn 0.5s ease;
         }
 
         .quiz-question {
@@ -243,12 +261,29 @@
             background: linear-gradient(135deg, #ffe6f0, #ffd9e2);
             border-radius: 40px;
             padding: 25px;
-            margin-top: 20px;
             text-align: center;
             font-size: 1.3rem;
             font-weight: bold;
             color: #a13e4f;
             animation: fadeIn 0.5s ease;
+        }
+
+        .restart-btn {
+            background: #b13b55;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 1rem;
+            margin-top: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+
+        .restart-btn:hover {
+            background: #902e46;
+            transform: scale(1.02);
         }
 
         @keyframes fadeIn {
@@ -272,6 +307,10 @@
                 font-size: 1rem;
                 padding: 10px 14px;
             }
+            .start-quiz-btn {
+                font-size: 1.3rem;
+                padding: 12px 24px;
+            }
         }
     </style>
 </head>
@@ -279,7 +318,7 @@
 
 <div class="game-card" id="gameContainer">
     <h1>
-        🎀 إلى  زينب 🎀
+        🎀 إلى زينب 🎀
         <i>💗</i>
     </h1>
 
@@ -287,7 +326,7 @@
         <p>✨ <span class="heart-icon">💖</span> زينب الجميلة ✨</p>
         <p>أردت أن أهديكِ هذه اللعبة البسيطة..<br>
         لأن ابتسامتكِ تشبه القمر ، وضحكتكِ تملأ قلبي فرحاً.<br>
-        <p>🌷 أعجابي بكِ لا يوصف 🌷</p>
+        🌷 أعجابي بكِ لا يوصف 🌷</p>
     </div>
 
     <div class="question">
@@ -305,6 +344,9 @@
         <span>💢 (مستحيل!)</span>
     </div>
 
+    <!-- منطقة الأسئلة -->
+    <div id="quizArea" class="quiz-area"></div>
+
     <footer>
         💌 لعبة المراوغة: مهما حاولتِ، زر "لا" يهرب! اضغطي "نعم" بكل حب 💌
     </footer>
@@ -312,16 +354,66 @@
 
 <script>
     (function() {
-        // -------------------- عناصر اللعبة --------------------
+        // عناصر DOM
         const noBtn = document.getElementById('noButton');
         const yesBtn = document.getElementById('yesButton');
         const battlefield = document.getElementById('battlefield');
         const attemptSpan = document.getElementById('attemptCount');
+        const quizArea = document.getElementById('quizArea');
         
+        // حالة اللعبة
         let attempts = 0;
         let gameFinished = false;
+        let escapeTimeout = false; // لمنع التكرار السريع للهروب
 
-        // -------------------- وظائف هروب "لا" --------------------
+        // الأسئلة
+        const questions = [
+            { text: "ما هو الشيء الذي يجعلكِ سعيدة جداً؟", options: ["قضاء الوقت مع الأصدقاء والعائلة", "تحقيق هدف كنتِ تسعين له", "السفر واكتشاف أماكن جديدة", "الاسترخاء مع كتاب أو فيلم مفضل"] },
+            { text: "كيف تقضين وقت فراغكِ عادة؟", options: ["أمارس هواية أحبها (رسم، موسيقى، رياضة...)", "أتحدث مع أصدقائي أو أتواصل معهم", "أتعلم شيئاً جديداً (لغة، مهارة...)", "أنام أو أتابع المسلسلات"] },
+            { text: "أي نوع من الأفلام أو المسلسلات تفضلين؟", options: ["رومانسي / دراما", "كوميدي / خفيف", "أكشن / مغامرات", "وثائقي / علمي"] },
+            { text: "لو كان بإمكانك السفر إلى أي مكان في العالم الآن، أين ستذهبين؟", options: ["مدينة أوروبية هادئة (مثل باريس أو سويسرا)", "جزيرة استوائية مع شاطئ", "مكان مليء بالتاريخ والثقافة", "مغامرة في الطبيعة (جبال، غابات)"] },
+            { text: "ما هي الصفة التي تحبينها أكثر في نفسك؟", options: ["التفاؤل والإيجابية", "الصدق والصراحة", "الإبداع والابتكار", "الهدوء والاستماع للآخرين"] },
+            { text: "كيف تتصرفين عندما تواجهين مشكلة صعبة؟", options: ["أفكر بها وحدي وأحاول إيجاد حل", "أطلب المساعدة من شخص أثق به", "أتجنب التفكير فيها لفترة ثم أواجهها", "أبحث عن معلومات أكثر قبل اتخاذ قرار"] },
+            { text: "ما هو اللون المفضل لديكِ؟", options: ["الأزرق / الأخضر", "الوردي / الأحمر", "الأسود / الرمادي", "الأصفر / البرتقالي"] },
+            { text: "أي من هذه العبارات تصفكِ أكثر؟", options: ["أحب التخطيط والتنظيم", "أحب العفوية والمفاجآت", "أجمع بين التخطيط والمرونة", "لا أحب الالتزامات كثيراً"] },
+            { text: "ما هو نوع الطعام الذي تفضلينه؟", options: ["حلويات وحلويات 😊", "أطباق رئيسية شهية", "خفيف وصحي", "مغامرات في أكلات جديدة"] },
+            { text: "بأي شيء تحبين أن يُذكر اسمكِ؟", options: ["بسمعة طيبة وأخلاق", "بإنجازاتي ونجاحاتي", "بكوني شخصاً محبوباً من حولي", "بضحكتي وروحي المرحة"] }
+        ];
+
+        let currentQuestionIndex = 0;
+        let answers = [];
+
+        // ----- دوال مساعدة -----
+        function safeConfetti(options) {
+            if (typeof canvasConfetti === 'function') {
+                canvasConfetti(options);
+            } else {
+                console.warn("canvas-confetti not loaded");
+            }
+        }
+
+        function showFloatingMessage(msg, element) {
+            let floatMsg = document.createElement('div');
+            floatMsg.innerText = msg;
+            floatMsg.style.position = 'fixed';
+            floatMsg.style.backgroundColor = '#ff80a5';
+            floatMsg.style.color = 'white';
+            floatMsg.style.padding = '5px 12px';
+            floatMsg.style.borderRadius = '40px';
+            floatMsg.style.fontSize = '0.8rem';
+            floatMsg.style.fontWeight = 'bold';
+            floatMsg.style.zIndex = '999';
+            floatMsg.style.pointerEvents = 'none';
+            floatMsg.style.whiteSpace = 'nowrap';
+            floatMsg.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            const rect = element.getBoundingClientRect();
+            floatMsg.style.left = rect.left + 'px';
+            floatMsg.style.top = (rect.top - 30) + 'px';
+            document.body.appendChild(floatMsg);
+            setTimeout(() => { if(floatMsg.parentNode) floatMsg.remove(); }, 800);
+        }
+
+        // حساب التداخل بين الزرين
         function isOverlappingWithYes() {
             const noRect = noBtn.getBoundingClientRect();
             const yesRect = yesBtn.getBoundingClientRect();
@@ -331,17 +423,22 @@
                      noRect.top > yesRect.bottom);
         }
 
+        // نقل زر "لا" إلى موقع عشوائي آمن
         function moveNoButtonRandomly() {
             if (gameFinished) return;
             const containerRect = battlefield.getBoundingClientRect();
             const btnWidth = noBtn.offsetWidth;
             const btnHeight = noBtn.offsetHeight;
+            // تأكد من وجود مساحة كافية
             const maxLeft = Math.max(0, containerRect.width - btnWidth - 10);
             const maxTop = Math.max(0, containerRect.height - btnHeight - 10);
             
+            // إذا كانت الأبعاد غير كافية (شاشة صغيرة جدًا) نخرج لتجنب مشاكل
+            if (maxLeft <= 0 || maxTop <= 0) return;
+            
             let newLeft, newTop;
-            let found = false;
-            for (let i = 0; i < 30; i++) {
+            // حاول 20 مرة للحصول على موقع غير متداخل مع زر "نعم"
+            for (let i = 0; i < 20; i++) {
                 newLeft = Math.random() * maxLeft;
                 newTop = Math.random() * maxTop;
                 newLeft = Math.min(Math.max(newLeft, 5), maxLeft);
@@ -349,27 +446,26 @@
                 noBtn.style.left = newLeft + 'px';
                 noBtn.style.top = newTop + 'px';
                 if (!isOverlappingWithYes()) {
-                    found = true;
-                    break;
+                    return;
                 }
             }
-            if (!found) {
-                const yesRect = yesBtn.getBoundingClientRect();
-                const containerCenterX = containerRect.left + containerRect.width / 2;
-                const containerCenterY = containerRect.top + containerRect.height / 2;
-                const yesCenterX = (yesRect.left + yesRect.right) / 2;
-                const yesCenterY = (yesRect.top + yesRect.bottom) / 2;
-                let dirX = yesCenterX < containerCenterX ? 1 : -1;
-                let dirY = yesCenterY < containerCenterY ? 1 : -1;
-                newLeft = dirX === 1 ? maxLeft - btnWidth : 5;
-                newTop = dirY === 1 ? maxTop - btnHeight : 5;
-                newLeft = Math.min(Math.max(newLeft, 5), maxLeft);
-                newTop = Math.min(Math.max(newTop, 5), maxTop);
-                noBtn.style.left = newLeft + 'px';
-                noBtn.style.top = newTop + 'px';
-            }
+            // إذا فشلنا في إيجاد موقع غير متداخل، نضعه في الزاوية المقابلة لزر "نعم"
+            const yesRect = yesBtn.getBoundingClientRect();
+            const yesCenterX = (yesRect.left + yesRect.right) / 2;
+            const yesCenterY = (yesRect.top + yesRect.bottom) / 2;
+            const containerCenterX = containerRect.left + containerRect.width / 2;
+            const containerCenterY = containerRect.top + containerRect.height / 2;
+            let dirX = yesCenterX < containerCenterX ? 1 : -1;
+            let dirY = yesCenterY < containerCenterY ? 1 : -1;
+            newLeft = dirX === 1 ? maxLeft - btnWidth : 5;
+            newTop = dirY === 1 ? maxTop - btnHeight : 5;
+            newLeft = Math.min(Math.max(newLeft, 5), maxLeft);
+            newTop = Math.min(Math.max(newTop, 5), maxTop);
+            noBtn.style.left = newLeft + 'px';
+            noBtn.style.top = newTop + 'px';
         }
 
+        // تهيئة الموضع الأولي لـ "لا" بعيداً عن "نعم"
         function setInitialNoPosition() {
             if (gameFinished) return;
             noBtn.style.position = 'absolute';
@@ -387,10 +483,7 @@
             noBtn.style.top = top + 'px';
         }
 
-        function handleResize() {
-            if (!gameFinished && noBtn) moveNoButtonRandomly();
-        }
-
+        // زيادة عداد المحاولات مع تأثير بسيط
         function incrementAttempt() {
             if (gameFinished) return;
             attempts++;
@@ -402,197 +495,188 @@
             }
         }
 
-        function showFloatingMessage(msg, element) {
-            let floatMsg = document.createElement('div');
-            floatMsg.innerText = msg;
-            floatMsg.style.position = 'fixed';
-            floatMsg.style.backgroundColor = '#ff80a5';
-            floatMsg.style.color = 'white';
-            floatMsg.style.padding = '5px 12px';
-            floatMsg.style.borderRadius = '40px';
-            floatMsg.style.fontSize = '0.8rem';
-            floatMsg.style.fontWeight = 'bold';
-            floatMsg.style.zIndex = '999';
-            floatMsg.style.pointerEvents = 'none';
-            floatMsg.style.whiteSpace = 'nowrap';
-            floatMsg.style.boxShadow = '0 4px 12px black';
-            const rect = element.getBoundingClientRect();
-            floatMsg.style.left = rect.left + 'px';
-            floatMsg.style.top = (rect.top - 30) + 'px';
-            document.body.appendChild(floatMsg);
-            setTimeout(() => { floatMsg.remove(); }, 700);
-        }
-
-        let escapeCooldown = false;
-        function escapeNo() {
+        // دالة الهروب: تمنع النقر الفعلي وتحرك الزر
+        function escapeNo(e) {
             if (gameFinished) return;
-            if (escapeCooldown) return;
-            escapeCooldown = true;
-            moveNoButtonRandomly();
-            setTimeout(() => { escapeCooldown = false; }, 100);
-        }
-
-        function onNoClick(e) {
+            // منع الحدث الأصلي (النقر أو اللمس)
             e.preventDefault();
             e.stopPropagation();
-            if (gameFinished) return;
             incrementAttempt();
-            escapeNo();
-            noBtn.style.transform = 'scale(0.95)';
-            setTimeout(() => { if(noBtn) noBtn.style.transform = ''; }, 120);
-            showFloatingMessage("🚫 ما راح تقدري تضغطيها! 😜", noBtn);
+            if (!escapeTimeout) {
+                escapeTimeout = true;
+                moveNoButtonRandomly();
+                showFloatingMessage("🏃‍♀️ زر لا يهرب! 🏃‍♂️", noBtn);
+                setTimeout(() => { escapeTimeout = false; }, 200);
+            }
             return false;
         }
 
-        function onNoMouseEnter(e) {
-            if (gameFinished) return;
-            escapeNo();
-        }
-
-        function onNoTouchStart(e) {
-            e.preventDefault();
-            if (gameFinished) return;
-            incrementAttempt();
-            escapeNo();
-            showFloatingMessage("🏃‍♂️ هههه زر لا هارب!", noBtn);
-            return false;
-        }
-
-        // -------------------- الأسئلة والمسابقة --------------------
-        const questions = [
-            { text: "ما هو الشيء الذي يجعلكِ سعيدة جداً؟", options: ["قضاء الوقت مع الأصدقاء والعائلة", "تحقيق هدف كنتِ تسعين له", "السفر واكتشاف أماكن جديدة", "الاسترخاء مع كتاب أو فيلم مفضل"] },
-            { text: "كيف تقضين وقت فراغكِ عادة؟", options: ["أمارس هواية أحبها (رسم، موسيقى، رياضة...)", "أتحدث مع أصدقائي أو أتواصل معهم", "أتعلم شيئاً جديداً (لغة، مهارة...)", "أنام أو أتابع المسلسلات"] },
-            { text: "أي نوع من الأفلام أو المسلسلات تفضلين؟", options: ["رومانسي / دراما", "كوميدي / خفيف", "أكشن / مغامرات", "وثائقي / علمي"] },
-            { text: "لو كان بإمكانك السفر إلى أي مكان في العالم الآن، أين ستذهبين؟", options: ["مدينة أوروبية هادئة (مثل باريس أو سويسرا)", "جزيرة استوائية مع شاطئ", "مكان مليء بالتاريخ والثقافة", "مغامرة في الطبيعة (جبال، غابات)"] },
-            { text: "ما هي الصفة التي تحبينها أكثر في نفسك؟", options: ["التفاؤل والإيجابية", "الصدق والصراحة", "الإبداع والابتكار", "الهدوء والاستماع للآخرين"] },
-            { text: "كيف تتصرفين عندما تواجهين مشكلة صعبة؟", options: ["أفكر بها وحدي وأحاول إيجاد حل", "أطلب المساعدة من شخص أثق به", "أتجنب التفكير فيها لفترة ثم أواجهها", "أبحث عن معلومات أكثر قبل اتخاذ قرار"] },
-            { text: "ما هو اللون المفضل لديكِ؟", options: ["الأزرق / الأخضر", "الوردي / الأحمر", "الأسود / الرمادي", "الأصفر / البرتقالي"] },
-            { text: "أي من هذه العبارات تصفكِ أكثر؟", options: ["أحب التخطيط والتنظيم", "أحب العفوية والمفاجآت", "أجمع بين التخطيط والمرونة", "لا أحب الالتزامات كثيراً"] },
-            { text: "ما هو نوع الطعام الذي تفضلينه؟", options: ["حلويات وحلويات 😊", "أطباق رئيسية شهية", "خفيف وصحي", "مغامرات في أكلات جديدة"] },
-            { text: "بأي شيء تحبين أن يُذكر اسمكِ؟", options: ["بسمعة طيبة وأخلاق", "بإنجازاتي ونجاحاتي", "بكوني شخصاً محبوباً من حولي", "بضحكتي وروحي المرحة"] }
-        ];
-
-        let currentQuestionIndex = 0;
-        let answers = [];
-
-        // تحليل الإجابات وتوليد ملخص
+        // ----- دوال الأسئلة والنتيجة -----
         function generateSummary() {
-            let summary = "";
-            // بناء بسيط: نعطي تحليل بناءً على أول إجابة أو أكثر
-            const firstAnswer = answers[0];
-            const secondAnswer = answers[1];
-            const thirdAnswer = answers[2];
-            const fourthAnswer = answers[3];
-            const fifthAnswer = answers[4];
-            
-            if (answers[0] === 0 || answers[0] === 1) summary += "💖 تحبين العلاقات الإنسانية والاهتمام بالآخرين. ";
-            if (answers[1] === 0 || answers[1] === 2) summary += "🎨 لديكِ روح الإبداع وحب التعلم. ";
-            if (answers[2] === 1) summary += "😄 روح الدعابة والضحك تملأ حياتك. ";
-            if (answers[3] === 1 || answers[3] === 3) summary += "🌊 شغوفة بالمغامرة واستكشاف الجديد. ";
-            if (answers[4] === 0) summary += "✨ التفاؤل والإيجابية هما عنوانك. ";
-            if (answers[4] === 2) summary += "🎭 مبدعة ومبتكرة بطبعك. ";
-            if (answers[5] === 1) summary += "🤝 تعتمدين على من حولك وتثقين بهم. ";
-            if (answers[6] === 1) summary += "💗 أنثوية وودودة، الألوان الزاهية تعبر عنك. ";
-            if (answers[7] === 0) summary += "📋 منظمة وتحبين التخطيط. ";
-            if (answers[7] === 1) summary += "🎉 عفوية ومليئة بالمفاجآت السارة. ";
-            if (answers[8] === 0) summary += "🍰 للحلويات مكانة خاصة في قلبك! ";
-            if (answers[9] === 0) summary += "🌟 السمعة الطيبة والأخلاق هي قيمتك الكبرى. ";
-            if (answers[9] === 3) summary += "😁 ضحكتك وروحك المرحة تجذب الجميع إليك. ";
-            
-            if (summary === "") summary = "أنتِ شخصية متعددة المواهب والاهتمامات، مزيج رائع من الجد والمرح! 💫";
-            
-            return summary + "\n\n✨ أنتِ رائعة كما أنتِ، وأنا معجب بهذه الشخصية الجميلة ✨";
+            let summaryParts = [];
+            const a = answers;
+            if (a[0] === 0) summaryParts.push("💖 تحبين العلاقات الإنسانية والاهتمام بالآخرين.");
+            else if (a[0] === 1) summaryParts.push("🎯 لديكِ طموح كبير وتحقيق الأهداف يسعدك.");
+            else if (a[0] === 2) summaryParts.push("✈️ شغوفة بالسفر والمغامرات.");
+            else if (a[0] === 3) summaryParts.push("📚 تفضلين الاسترخاء والهدوء مع كتاب أو فيلم.");
+
+            if (a[1] === 0) summaryParts.push("🎨 تملكين روحاً إبداعية وتحبين ممارسة الهوايات.");
+            else if (a[1] === 1) summaryParts.push("👭 اجتماعية وتتواصلين مع الآخرين بكل حب.");
+            else if (a[1] === 2) summaryParts.push("📖 محبة للتعلم وتطوير الذات.");
+            else if (a[1] === 3) summaryParts.push("😴 تحبين الراحة والاسترخاء.");
+
+            if (a[2] === 0) summaryParts.push("🎭 رومانسية ودرامية بطبعك.");
+            else if (a[2] === 1) summaryParts.push("😄 مرحبة وخفة ظل تضحكين من حولك.");
+            else if (a[2] === 2) summaryParts.push("⚡ محبة للإثارة والتشويق.");
+            else if (a[2] === 3) summaryParts.push("📺 مهتمة بالمعرفة والعلوم.");
+
+            if (a[3] === 0) summaryParts.push("🏰 تحلمين بأجواء أوروبية هادئة.");
+            else if (a[3] === 1) summaryParts.push("🏝️ شغوفة بالشواطئ والطبيعة الاستوائية.");
+            else if (a[3] === 2) summaryParts.push("🏛️ تهتمين بالتاريخ والثقافات.");
+            else if (a[3] === 3) summaryParts.push("⛰️ مغامرة تحبين استكشاف الجبال والغابات.");
+
+            if (a[4] === 0) summaryParts.push("✨ التفاؤل والإيجابية هما عنوانك.");
+            else if (a[4] === 1) summaryParts.push("🔍 صادقة وصريحة، وهذا ما يميزك.");
+            else if (a[4] === 2) summaryParts.push("🎭 مبدعة ومبتكرة في كل شيء.");
+            else if (a[4] === 3) summaryParts.push("🌿 هادئة ومستمع جيد للآخرين.");
+
+            if (a[5] === 1) summaryParts.push("🤝 تعتمدين على من حولك وتثقين بهم.");
+            else if (a[5] === 0) summaryParts.push("🧠 تفكرين بحلول بمفردك.");
+            else if (a[5] === 2) summaryParts.push("⏳ تحتاجين وقتاً لمواجهة المشاكل.");
+            else if (a[5] === 3) summaryParts.push("📚 تبحثين عن معلومات قبل اتخاذ القرار.");
+
+            if (a[6] === 1) summaryParts.push("💗 أنثوية وودودة، الألوان الزاهية تعبر عنك.");
+            else if (a[6] === 0) summaryParts.push("💙 تحبين الألوان الهادئة مثل الأزرق والأخضر.");
+            else if (a[6] === 2) summaryParts.push("🖤 تميلين للألوان الكلاسيكية.");
+            else if (a[6] === 3) summaryParts.push("☀️ مفعمة بالحيوية مثل الأصفر والبرتقالي.");
+
+            if (a[7] === 0) summaryParts.push("📋 منظمة وتحبين التخطيط.");
+            else if (a[7] === 1) summaryParts.push("🎉 عفوية ومليئة بالمفاجآت السارة.");
+            else if (a[7] === 2) summaryParts.push("⚖️ تجمعين بين التخطيط والمرونة.");
+            else if (a[7] === 3) summaryParts.push("🕊️ تفضلين عدم الالتزامات الكثيرة.");
+
+            if (a[8] === 0) summaryParts.push("🍰 للحلويات مكانة خاصة في قلبك!");
+            else if (a[8] === 1) summaryParts.push("🍽️ تحبين الأطباق الرئيسية الشهية.");
+            else if (a[8] === 2) summaryParts.push("🥗 مهتمة بالصحة والغذاء الصحي.");
+            else if (a[8] === 3) summaryParts.push("🍜 تحبين تجربة أكلات جديدة.");
+
+            if (a[9] === 0) summaryParts.push("🌟 السمعة الطيبة والأخلاق هي قيمتك الكبرى.");
+            else if (a[9] === 1) summaryParts.push("🏆 تفتخرين بإنجازاتك ونجاحاتك.");
+            else if (a[9] === 2) summaryParts.push("💕 تحبين أن تكوني محبوبة من الجميع.");
+            else if (a[9] === 3) summaryParts.push("😁 ضحكتك وروحك المرحة تجذب الجميع إليك.");
+
+            if (summaryParts.length === 0) summaryParts.push("أنتِ شخصية متعددة المواهب والاهتمامات، مزيج رائع من الجد والمرح! 💫");
+            return summaryParts.join(" ") + "\n\n✨ أنتِ رائعة كما أنتِ، وأنا معجب بهذه الشخصية الجميلة ✨";
         }
 
         function displayQuestion() {
             const q = questions[currentQuestionIndex];
-            let html = `
-                <div class="quiz-container" id="quizContainer">
-                    <div class="quiz-question">${currentQuestionIndex+1}. ${q.text}</div>
-                    <div class="quiz-options">
-            `;
+            const container = document.createElement('div');
+            container.className = 'quiz-container';
+            let optionsHtml = '';
             q.options.forEach((opt, idx) => {
-                html += `<div class="quiz-option" data-opt-index="${idx}">${String.fromCharCode(65+idx)} - ${opt}</div>`;
+                optionsHtml += `<div class="quiz-option" data-opt-index="${idx}">${String.fromCharCode(65+idx)} - ${opt}</div>`;
             });
-            html += `</div><div class="quiz-progress">السؤال ${currentQuestionIndex+1} من ${questions.length}</div></div>`;
+            container.innerHTML = `
+                <div class="quiz-question">${currentQuestionIndex+1}. ${q.text}</div>
+                <div class="quiz-options">${optionsHtml}</div>
+                <div class="quiz-progress">السؤال ${currentQuestionIndex+1} من ${questions.length}</div>
+            `;
+            quizArea.innerHTML = '';
+            quizArea.appendChild(container);
             
-            const battlefieldDiv = document.querySelector('.buttons-battlefield');
-            // إزالة أي حاوية أسئلة سابقة
-            const oldQuiz = document.getElementById('quizContainer');
-            if (oldQuiz) oldQuiz.remove();
-            battlefieldDiv.insertAdjacentHTML('afterend', html);
+            const handleAnswer = (idx) => {
+                answers.push(idx);
+                currentQuestionIndex++;
+                if (currentQuestionIndex < questions.length) {
+                    displayQuestion();
+                } else {
+                    showResult();
+                }
+            };
             
-            // إضافة مستمعات للخيارات
             document.querySelectorAll('.quiz-option').forEach(opt => {
-                opt.addEventListener('click', (e) => {
-                    const selectedIdx = parseInt(opt.dataset.optIndex);
-                    answers.push(selectedIdx);
-                    currentQuestionIndex++;
-                    if (currentQuestionIndex < questions.length) {
-                        displayQuestion();
-                    } else {
-                        showResult();
-                    }
-                });
-                // تحسين اللمس
+                const answerIdx = parseInt(opt.dataset.optIndex);
+                opt.addEventListener('click', () => handleAnswer(answerIdx));
+                // منع التمرير من اللمس (لكن لا نمنع كل شيء)
                 opt.addEventListener('touchstart', (e) => {
                     e.preventDefault();
-                    const selectedIdx = parseInt(opt.dataset.optIndex);
-                    answers.push(selectedIdx);
-                    currentQuestionIndex++;
-                    if (currentQuestionIndex < questions.length) {
-                        displayQuestion();
-                    } else {
-                        showResult();
-                    }
+                    handleAnswer(answerIdx);
                 }, { passive: false });
             });
         }
-
+        
         function showResult() {
             const summary = generateSummary();
-            const battlefieldDiv = document.querySelector('.buttons-battlefield');
-            const oldQuiz = document.getElementById('quizContainer');
-            if (oldQuiz) oldQuiz.remove();
-            
-            const resultHtml = `
-                <div class="result-box" id="resultBox">
+            quizArea.innerHTML = `
+                <div class="result-box">
                     🌸🌸🌸 ملخص شخصيتك الرائعة 🌸🌸🌸<br><br>
                     ${summary}<br><br>
                     💖 شكراً لمشاركتك في المسابقة 💖<br>
                     <div style="font-size: 2rem; margin-top: 15px;">💘😍💘</div>
+                    <button class="restart-btn" id="restartGameBtn">🔄 إعادة اللعبة 🔄</button>
                 </div>
             `;
-            battlefieldDiv.insertAdjacentHTML('afterend', resultHtml);
-            
-            // إطلاق كونفيتي إضافي
-            canvasConfetti({
+            safeConfetti({
                 particleCount: 300,
                 spread: 120,
                 origin: { y: 0.5 },
                 colors: ['#ff99cc', '#ff6f91', '#ffb347', '#ffd966'],
                 shapes: ['heart', 'circle']
             });
+            
+            const restartBtn = document.getElementById('restartGameBtn');
+            if (restartBtn) {
+                restartBtn.addEventListener('click', () => location.reload()); // بسيط: إعادة تحميل الصفحة
+                restartBtn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    location.reload();
+                }, { passive: false });
+            }
         }
-
-        // -------------------- الضغط على "نعم" --------------------
+        
+        // عرض زر بدء الأسئلة بعد الضغط على "نعم"
+        function showStartQuizButton() {
+            quizArea.style.display = 'block';
+            quizArea.innerHTML = `
+                <div style="text-align: center;">
+                    <button class="start-quiz-btn" id="startQuizBtn">📝 دخول للأسئلة 📝</button>
+                </div>
+            `;
+            const startBtn = document.getElementById('startQuizBtn');
+            if (startBtn) {
+                const startQuiz = () => {
+                    currentQuestionIndex = 0;
+                    answers = [];
+                    displayQuestion();
+                };
+                startBtn.addEventListener('click', startQuiz);
+                startBtn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    startQuiz();
+                }, { passive: false });
+            }
+        }
+        
+        // ----- معالجة الضغط على "نعم" -----
         function onYesClick(e) {
             if (gameFinished) return;
             gameFinished = true;
             
-            // إزالة مستمعات لا
-            noBtn.removeEventListener('click', onNoClick);
-            noBtn.removeEventListener('mouseenter', onNoMouseEnter);
-            noBtn.removeEventListener('touchstart', onNoTouchStart);
+            // إزالة مستمعات "لا" لمنع أي تفاعل مستقبلي
+            noBtn.removeEventListener('mouseenter', escapeNo);
+            noBtn.removeEventListener('touchstart', escapeNo);
+            noBtn.removeEventListener('click', escapeNo);
             noBtn.style.pointerEvents = 'none';
             noBtn.style.opacity = '0.5';
             noBtn.style.filter = 'grayscale(0.2)';
             
+            // إخفاء الأزرار
             yesBtn.style.display = 'none';
             noBtn.style.display = 'none';
             
-            // إطلاق كونفيتي أولي
-            canvasConfetti({
+            // كونفيتي
+            safeConfetti({
                 particleCount: 200,
                 spread: 100,
                 origin: { y: 0.6 },
@@ -601,18 +685,16 @@
                 shapes: ['heart', 'circle']
             });
             
-            // عرض أول سؤال
-            currentQuestionIndex = 0;
-            answers = [];
-            displayQuestion();
+            // عرض زر بدء الأسئلة
+            showStartQuizButton();
             
-            // تحديث عداد المحاولات
+            // تحديث العداد والنص
             attemptSpan.innerText = attempts + " 💞 فشلتي في الهروب 😂";
             const lastSpan = document.querySelector('.counter-box span:last-child');
-            if (lastSpan) lastSpan.innerHTML = "🥰 الآن تعالي نتعرف عليكِ 🥰";
+            if (lastSpan) lastSpan.innerHTML = "🥰 الآن اضغطي على زر الدخول للأسئلة 🥰";
             
-            // تأثير قلوب متساقطة لفترة
-            const heartsRain = setInterval(() => {
+            // قلوب متساقطة
+            let heartsInterval = setInterval(() => {
                 if (gameFinished) {
                     let heartSpan = document.createElement('div');
                     heartSpan.innerHTML = '💖';
@@ -632,36 +714,37 @@
                     }, 50);
                 }
             }, 400);
-            setTimeout(() => clearInterval(heartsRain), 5000);
+            setTimeout(() => clearInterval(heartsInterval), 5000);
         }
-
-        // -------------------- تهيئة اللعبة --------------------
+        
+        // ----- تهيئة اللعبة وإضافة المستمعات -----
         function initGame() {
-            noBtn.style.position = 'absolute';
-            noBtn.style.display = 'inline-block';
+            // التأكد من أن الحاوية نسبية (موجودة في CSS بالفعل)
             battlefield.style.position = 'relative';
             setInitialNoPosition();
             
-            noBtn.addEventListener('click', onNoClick);
-            noBtn.addEventListener('mouseenter', onNoMouseEnter);
-            noBtn.addEventListener('touchstart', onNoTouchStart, { passive: false });
+            // منع زر "لا" من النقر والهروب عند اللمس أو الماوس
+            noBtn.addEventListener('mouseenter', escapeNo);
+            noBtn.addEventListener('touchstart', escapeNo, { passive: false });
+            noBtn.addEventListener('click', escapeNo); // احتياطي
             
             yesBtn.addEventListener('click', onYesClick);
-            yesBtn.addEventListener('touchstart', function(e) {
+            yesBtn.addEventListener('touchstart', (e) => {
                 if (!gameFinished) {
                     e.preventDefault();
                     onYesClick(e);
                 }
             }, { passive: false });
             
-            noBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); });
-            noBtn.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+            // إعادة ضبط الموضع عند تغيير حجم النافذة (إذا لم تنته اللعبة)
+            window.addEventListener('resize', () => {
+                if (!gameFinished) {
+                    setInitialNoPosition();
+                }
+            });
         }
         
         initGame();
-        window.addEventListener('resize', handleResize);
-        const resizeObserver = new ResizeObserver(() => { if (!gameFinished && noBtn) handleResize(); });
-        if (battlefield) resizeObserver.observe(battlefield);
     })();
 </script>
 </body>
