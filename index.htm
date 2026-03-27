@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>لعبة قلب زينب | هل تُعجبي بي؟ 💖</title>
+    <!-- Canvas Confetti library لإطلاق الزهور والقلوب عند النجاح -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* منع تحديد النص لتحسين اللعب */
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(145deg, #ff9a9e 0%, #fad0c4 50%, #fad0c4 100%);
+            font-family: 'Segoe UI', 'Tahoma', 'Cairo', 'Tajawal', system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* بطاقة اللعبة الرئيسية */
+        .game-card {
+            max-width: 700px;
+            width: 100%;
+            background: rgba(255, 248, 245, 0.95);
+            border-radius: 68px;
+            box-shadow: 0 30px 40px rgba(0, 0, 0, 0.2), 0 0 0 10px rgba(255, 215, 215, 0.5);
+            padding: 30px 25px 45px;
+            text-align: center;
+            backdrop-filter: blur(2px);
+            transition: 0.3s;
+            border: 1px solid #ffb7b2;
+        }
+
+        h1 {
+            font-size: 2.6rem;
+            background: linear-gradient(135deg, #e43b6e, #ff8c9e);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 15px;
+            letter-spacing: -0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        h1 i {
+            font-size: 2rem;
+            color: #ff4d6d;
+        }
+
+        .admire-text {
+            background: #fff0f3;
+            padding: 20px 18px;
+            border-radius: 60px;
+            margin: 15px 0 20px;
+            font-size: 1.3rem;
+            line-height: 1.6;
+            color: #a13e4f;
+            font-weight: bold;
+            box-shadow: inset 0 1px 4px #ffcdd4, 0 6px 12px rgba(0,0,0,0.05);
+            border: 1px solid #ffbfc9;
+        }
+
+        .admire-text p {
+            margin: 5px 0;
+        }
+
+        .heart-icon {
+            display: inline-block;
+            animation: heartbeat 1.2s infinite;
+            font-size: 1.5rem;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .question {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #c43b5e;
+            margin: 20px 0 15px;
+            background: #ffe2e7;
+            display: inline-block;
+            padding: 8px 24px;
+            border-radius: 50px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+
+        /* منطقة الأزرار - تحتوي على زر نعم ثابت وزر لا متحرك (absolute) */
+        .buttons-battlefield {
+            position: relative;
+            min-height: 170px;
+            margin: 25px 0 20px;
+            background: #ffefef4d;
+            border-radius: 50px;
+            padding: 20px 10px;
+            transition: all 0.2s;
+        }
+
+        /* الزر الثابت "نعم" */
+        .yes-btn {
+            background: linear-gradient(120deg, #43e97b, #38f9a0);
+            border: none;
+            padding: 16px 42px;
+            font-size: 2rem;
+            font-weight: bold;
+            font-family: inherit;
+            color: white;
+            border-radius: 70px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 12px 20px rgba(56, 249, 160, 0.3);
+            border: 1px solid #ffffffaa;
+            display: inline-block;
+            letter-spacing: 1px;
+            width: auto;
+            min-width: 160px;
+            z-index: 5;
+            position: relative;
+        }
+
+        .yes-btn:hover {
+            transform: scale(1.03);
+            background: linear-gradient(120deg, #2bcf6e, #23e68f);
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* زر "لا" المراوغ - يتم التحكم بموقعه بواسطة JS */
+        .no-btn {
+            background: #d15a6e;
+            border: none;
+            padding: 16px 38px;
+            font-size: 2rem;
+            font-weight: bold;
+            font-family: inherit;
+            color: #fff0f0;
+            border-radius: 70px;
+            cursor: pointer;
+            transition: all 0.12s cubic-bezier(0.2, 0.9, 0.4, 1.2);
+            box-shadow: 0 8px 14px rgba(0, 0, 0, 0.2);
+            border: 1px solid #ffc0cb;
+            white-space: nowrap;
+            position: absolute;
+            z-index: 20;
+            backdrop-filter: blur(2px);
+            width: auto;
+            min-width: 140px;
+        }
+
+        /* عداد محاولات الضغط على لا (فكاهي) */
+        .counter-box {
+            background: #ffd9df;
+            border-radius: 40px;
+            padding: 8px 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #b13b55;
+            box-shadow: inset 0 0 0 2px white, 0 4px 8px rgba(0,0,0,0.05);
+        }
+
+        .counter-box span:first-child {
+            background: #b13b55;
+            color: white;
+            padding: 4px 14px;
+            border-radius: 50px;
+        }
+
+        #attemptCount {
+            font-size: 1.7rem;
+            font-weight: 800;
+            min-width: 50px;
+            display: inline-block;
+            color: #a12242;
+        }
+
+        /* رسالة النجاح بعد الضغط على نعم */
+        .success-message {
+            margin-top: 20px;
+            background: #ffdf6e;
+            border-radius: 50px;
+            padding: 15px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #9b3b50;
+            animation: glow 1s infinite alternate;
+            border: 1px solid #ffb347;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 2px pink; box-shadow: 0 0 5px #ffb347;}
+            to { text-shadow: 0 0 10px #ff8585; box-shadow: 0 0 20px #ff7e6b;}
+        }
+
+        footer {
+            font-size: 0.8rem;
+            margin-top: 25px;
+            opacity: 0.7;
+            color: #ac7080;
+        }
+
+        button {
+            font-weight: bold;
+            touch-action: manipulation;
+        }
+
+        /* تكيف مع الشاشات الصغيرة */
+        @media (max-width: 550px) {
+            .game-card {
+                padding: 20px 18px 30px;
+            }
+            .yes-btn, .no-btn {
+                font-size: 1.5rem;
+                padding: 12px 26px;
+                min-width: 120px;
+            }
+            .question {
+                font-size: 1.6rem;
+            }
+            .admire-text {
+                font-size: 1rem;
+            }
+            .buttons-battlefield {
+                min-height: 190px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-card" id="gameContainer">
+    <h1>
+        🎀 إلى  زينب 🎀
+        <i>💗</i>
+    </h1>
+
+    <!-- عبارات الإعجاب -->
+    <div class="admire-text">
+        <p>✨ <span class="heart-icon">💖</span> زينب الجميلة ✨</p>
+        <p>أردت أن أهديكِ هذه اللعبة البسيطة..<br>
+        لأن ابتسامتكِ تشبه القمر ، وضحكتكِ تملأ قلبي فرحاً.<br>
+        <p>🌷 أعجابي بكِ لا يوصف 🌷</p>
+    </div>
+
+    <div class="question">
+        ❓ هل تُعجبي بي؟ ❓
+    </div>
+
+    <!-- ساحة المعركة (الأزرار) -->
+    <div class="buttons-battlefield" id="battlefield">
+        <button class="yes-btn" id="yesButton">نعم 💘</button>
+        <button class="no-btn" id="noButton">لا 😅</button>
+    </div>
+
+    <!-- عداد فكاهي لعدد محاولات الضغط على لا (التي باءت بالفشل) -->
+    <div class="counter-box">
+        <span>🏃‍♀️ محاولات الإمساك بـ "لا" 🏃‍♂️</span>
+        <span id="attemptCount">0</span>
+        <span>💢 (مستحيل!)</span>
+    </div>
+
+    <footer>
+        💌 لعبة المراوغة: مهما حاولتِ، زر "لا" يهرب! اضغطي "نعم" بكل حب 💌
+    </footer>
+</div>
+
+<script>
+    (function() {
+        // العناصر
+        const noBtn = document.getElementById('noButton');
+        const yesBtn = document.getElementById('yesButton');
+        const battlefield = document.getElementById('battlefield');
+        const attemptSpan = document.getElementById('attemptCount');
+        
+        let attempts = 0;           // عدد محاولات الضغط على زر لا (فشل تام)
+        let gameFinished = false;    // هل تم الضغط على نعم وانتهت اللعبة؟
+        
+        // دالة لتحديث موقع زر "لا" بطريقة عشوائية داخل ساحة المعركة (يهرب بعيداً)
+        function moveNoButtonRandomly() {
+            if (gameFinished) return;
+            
+            const containerRect = battlefield.getBoundingClientRect();
+            const btnWidth = noBtn.offsetWidth;
+            const btnHeight = noBtn.offsetHeight;
+            
+            // حساب أقصى إزاحة ممكنة مع ترك مسافة 5px من الحواف
+            const maxLeft = Math.max(0, containerRect.width - btnWidth - 5);
+            const maxTop = Math.max(0, containerRect.height - btnHeight - 5);
+            
+            // إذا كانت المساحة صغيرة جداً، نضع الزر في أي مكان ممكن
+            if (maxLeft <= 0 || maxTop <= 0) {
+                let left = Math.random() * (containerRect.width - btnWidth);
+                let top = Math.random() * (containerRect.height - btnHeight);
+                left = Math.min(Math.max(left, 2), containerRect.width - btnWidth - 2);
+                top = Math.min(Math.max(top, 2), containerRect.height - btnHeight - 2);
+                noBtn.style.left = left + 'px';
+                noBtn.style.top = top + 'px';
+                return;
+            }
+            
+            // اختيار موقع عشوائي جديد بعيد عن الموقع الحالي (اختياري)
+            let randomLeft = Math.random() * maxLeft;
+            let randomTop = Math.random() * maxTop;
+            
+            // نضمن عدم الخروج عن الحدود
+            randomLeft = Math.min(Math.max(randomLeft, 5), maxLeft);
+            randomTop = Math.min(Math.max(randomTop, 5), maxTop);
+            
+            noBtn.style.left = randomLeft + 'px';
+            noBtn.style.top = randomTop + 'px';
+        }
+        
+        // دالة لبدء وضع زر "لا" في أول مرة بطريقة آمنة
+        function setInitialNoPosition() {
+            if (gameFinished) return;
+            // نضعه في زاوية بعيدة في البداية
+            const containerRect = battlefield.getBoundingClientRect();
+            const btnWidth = noBtn.offsetWidth;
+            const btnHeight = noBtn.offsetHeight;
+            const containerWidth = containerRect.width;
+            const containerHeight = containerRect.height;
+            
+            let left = containerWidth - btnWidth - 20;
+            let top = containerHeight - btnHeight - 20;
+            if (left < 5) left = 10;
+            if (top < 5) top = 10;
+            if (left > containerWidth - btnWidth) left = containerWidth - btnWidth - 10;
+            if (top > containerHeight - btnHeight) top = containerHeight - btnHeight - 10;
+            noBtn.style.left = left + 'px';
+            noBtn.style.top = top + 'px';
+            noBtn.style.position = 'absolute';
+        }
+        
+        // تحديث موقع زر "لا" عند تغيير حجم النافذة
+        function handleResize() {
+            if (gameFinished) return;
+            const containerRect = battlefield.getBoundingClientRect();
+            const btnWidth = noBtn.offsetWidth;
+            const btnHeight = noBtn.offsetHeight;
+            let currentLeft = parseFloat(noBtn.style.left);
+            let currentTop = parseFloat(noBtn.style.top);
+            
+            if (isNaN(currentLeft)) currentLeft = 0;
+            if (isNaN(currentTop)) currentTop = 0;
+            
+            const maxLeft = Math.max(0, containerRect.width - btnWidth - 5);
+            const maxTop = Math.max(0, containerRect.height - btnHeight - 5);
+            
+            let newLeft = Math.min(currentLeft, maxLeft);
+            let newTop = Math.min(currentTop, maxTop);
+            newLeft = Math.max(newLeft, 5);
+            newTop = Math.max(newTop, 5);
+            
+            noBtn.style.left = newLeft + 'px';
+            noBtn.style.top = newTop + 'px';
+        }
+        
+        // زيادة عدد المحاولات الفاشلة على زر "لا"
+        function incrementAttempt() {
+            if (gameFinished) return;
+            attempts++;
+            attemptSpan.innerText = attempts;
+            // تأثير هز للعداد
+            const counterDiv = document.querySelector('.counter-box');
+            if (counterDiv) {
+                counterDiv.style.transform = 'scale(1.05)';
+                setTimeout(() => { if(counterDiv) counterDiv.style.transform = 'scale(1)'; }, 150);
+            }
+        }
+        
+        // عرض رسالة عائمة صغيرة قرب الزر
+        function showFloatingMessage(msg, element) {
+            let floatMsg = document.createElement('div');
+            floatMsg.innerText = msg;
+            floatMsg.style.position = 'fixed';
+            floatMsg.style.backgroundColor = '#ff80a5';
+            floatMsg.style.color = 'white';
+            floatMsg.style.padding = '5px 12px';
+            floatMsg.style.borderRadius = '40px';
+            floatMsg.style.fontSize = '0.8rem';
+            floatMsg.style.fontWeight = 'bold';
+            floatMsg.style.zIndex = '999';
+            floatMsg.style.pointerEvents = 'none';
+            floatMsg.style.whiteSpace = 'nowrap';
+            floatMsg.style.boxShadow = '0 4px 12px black';
+            const rect = element.getBoundingClientRect();
+            floatMsg.style.left = rect.left + 'px';
+            floatMsg.style.top = (rect.top - 30) + 'px';
+            document.body.appendChild(floatMsg);
+            setTimeout(() => { floatMsg.remove(); }, 700);
+        }
+        
+        // دالة الهروب السريع (تتحرك فوراً)
+        let escapeCooldown = false;
+        function escapeNo() {
+            if (gameFinished) return;
+            if (escapeCooldown) return; // منع التكرار المفرط
+            escapeCooldown = true;
+            moveNoButtonRandomly();
+            setTimeout(() => { escapeCooldown = false; }, 80);
+        }
+        
+        // معالج محاولة الضغط على زر "لا"
+        function onNoClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (gameFinished) return;
+            
+            incrementAttempt();
+            escapeNo(); // يهرب فوراً
+            noBtn.style.transform = 'scale(0.95)';
+            setTimeout(() => { if(noBtn) noBtn.style.transform = ''; }, 120);
+            showFloatingMessage("🚫 ما راح تقدري تضغطيها! 😜", noBtn);
+            return false;
+        }
+        
+        // معالج تمرير الماوس فوق لا (يهرب فوراً)
+        function onNoMouseEnter(e) {
+            if (gameFinished) return;
+            escapeNo();
+            noBtn.style.transition = 'all 0.1s ease';
+            setTimeout(() => { if(noBtn) noBtn.style.transition = 'all 0.12s cubic-bezier(0.2, 0.9, 0.4, 1.2)'; }, 120);
+        }
+        
+        // المعالج للأجهزة اللمسية
+        function onNoTouchStart(e) {
+            e.preventDefault();
+            if (gameFinished) return;
+            incrementAttempt();
+            escapeNo();
+            showFloatingMessage("🏃‍♂️ هههه زر لا هارب!", noBtn);
+            return false;
+        }
+        
+        // معالج نجاح الضغط على "نعم"
+        function onYesClick(e) {
+            if (gameFinished) return;
+            gameFinished = true;
+            
+            // إزالة جميع مستمعي الأحداث من زر "لا"
+            noBtn.removeEventListener('click', onNoClick);
+            noBtn.removeEventListener('mouseenter', onNoMouseEnter);
+            noBtn.removeEventListener('touchstart', onNoTouchStart);
+            noBtn.style.pointerEvents = 'none';
+            noBtn.style.opacity = '0.5';
+            noBtn.style.filter = 'grayscale(0.2)';
+            
+            // إخفاء الأزرار
+            yesBtn.style.display = 'none';
+            noBtn.style.display = 'none';
+            
+            // إضافة رسالة جميلة في مكان الأزرار
+            const battlefieldDiv = document.querySelector('.buttons-battlefield');
+            const msgContainer = document.createElement('div');
+            msgContainer.style.margin = '20px auto';
+            msgContainer.style.background = 'linear-gradient(135deg, #ffdde1, #ee9ca7)';
+            msgContainer.style.padding = '20px';
+            msgContainer.style.borderRadius = '60px';
+            msgContainer.style.fontSize = '1.5rem';
+            msgContainer.style.fontWeight = 'bold';
+            msgContainer.style.color = '#941f44';
+            msgContainer.style.textAlign = 'center';
+            msgContainer.style.boxShadow = '0 8px 20px rgba(0,0,0,0.2)';
+            msgContainer.innerHTML = `
+                🌸💗 زينب الجميلة! 💗🌸<br>
+                ❤️ شكراً لأنكِ جعلتِ قلبي يفرح ❤️<br>
+                🥰 أنتِ حبي الأول والأخير 🥰
+                <div style="font-size: 3rem; margin-top: 12px;">💘😘💘</div>
+            `;
+            battlefieldDiv.appendChild(msgContainer);
+            
+            // إطلاق مؤثرات كونفيتي
+            canvasConfetti({
+                particleCount: 200,
+                spread: 100,
+                origin: { y: 0.6 },
+                startVelocity: 20,
+                colors: ['#ff6f91', '#ffb6c1', '#ff4d6d', '#ff99cc', '#ffd966'],
+                shapes: ['heart', 'circle']
+            });
+            canvasConfetti({
+                particleCount: 120,
+                spread: 140,
+                origin: { y: 0.3, x: 0.2 },
+                startVelocity: 25,
+                colors: ['#ff80ab', '#ff4081', '#ffc0cb']
+            });
+            canvasConfetti({
+                particleCount: 120,
+                spread: 140,
+                origin: { y: 0.4, x: 0.8 },
+                startVelocity: 25,
+                colors: ['#ff5e7e', '#ffb347']
+            });
+            
+            let confettiInterval = setInterval(() => {
+                canvasConfetti({
+                    particleCount: 70,
+                    spread: 65,
+                    origin: { y: 0.5, x: Math.random() },
+                    colors: ['#ff6b8b', '#ff9fae', '#ffd1dc']
+                });
+            }, 300);
+            setTimeout(() => clearInterval(confettiInterval), 2000);
+            
+            // تحديث العداد
+            attemptSpan.innerText = attempts + " 💞 فشلتي في الهروب 😂";
+            const lastSpan = document.querySelector('.counter-box span:last-child');
+            if (lastSpan) lastSpan.innerHTML = "🥰 لكن نعم انتصرت! 🥰";
+            
+            // إظهار قلوب متساقطة
+            const heartsRain = setInterval(() => {
+                if (gameFinished) {
+                    let heartSpan = document.createElement('div');
+                    heartSpan.innerHTML = '💖';
+                    heartSpan.style.position = 'fixed';
+                    heartSpan.style.left = Math.random() * window.innerWidth + 'px';
+                    heartSpan.style.top = '-20px';
+                    heartSpan.style.fontSize = (20 + Math.random() * 30) + 'px';
+                    heartSpan.style.opacity = '0.8';
+                    heartSpan.style.transition = 'all 3s linear';
+                    heartSpan.style.zIndex = '9999';
+                    heartSpan.style.pointerEvents = 'none';
+                    document.body.appendChild(heartSpan);
+                    setTimeout(() => {
+                        heartSpan.style.top = window.innerHeight + 20 + 'px';
+                        heartSpan.style.opacity = '0';
+                        setTimeout(() => heartSpan.remove(), 3000);
+                    }, 50);
+                }
+            }, 400);
+            setTimeout(() => clearInterval(heartsRain), 5000);
+        }
+        
+        // تهيئة اللعبة
+        function initGame() {
+            noBtn.style.position = 'absolute';
+            noBtn.style.display = 'inline-block';
+            battlefield.style.position = 'relative';
+            setInitialNoPosition();
+            
+            noBtn.addEventListener('click', onNoClick);
+            noBtn.addEventListener('mouseenter', onNoMouseEnter);
+            noBtn.addEventListener('touchstart', onNoTouchStart, { passive: false });
+            yesBtn.addEventListener('click', onYesClick);
+            
+            noBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); });
+            noBtn.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+        }
+        
+        initGame();
+        
+        // مراقبة تغيير الحجم
+        window.addEventListener('resize', () => {
+            if (!gameFinished && noBtn) handleResize();
+        });
+        
+        const resizeObserver = new ResizeObserver(() => {
+            if (!gameFinished && noBtn) handleResize();
+        });
+        if (battlefield) resizeObserver.observe(battlefield);
+        
+        // منع التكبير باللمس على زر نعم
+        yesBtn.addEventListener('touchstart', (e) => {
+            if (!gameFinished) e.preventDefault();
+        }, { passive: false });
+    })();
+</script>
+</body>
+</html>
