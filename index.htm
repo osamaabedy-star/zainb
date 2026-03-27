@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>لعبة قلب زينب | هل تُعجبي بي؟ 💖</title>
+    <title>لعبة قلب زينب | مسابقة الشخصية 💖</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
     <style>
         * {
@@ -55,11 +55,6 @@
             justify-content: center;
         }
 
-        h1 i {
-            font-size: 2rem;
-            color: #ff4d6d;
-        }
-
         .admire-text {
             background: #fff0f3;
             padding: 20px 18px;
@@ -71,10 +66,6 @@
             font-weight: bold;
             box-shadow: inset 0 1px 4px #ffcdd4, 0 6px 12px rgba(0,0,0,0.05);
             border: 1px solid #ffbfc9;
-        }
-
-        .admire-text p {
-            margin: 5px 0;
         }
 
         .heart-icon {
@@ -136,10 +127,6 @@
             touch-action: manipulation;
         }
 
-        .yes-btn:active {
-            transform: scale(0.97);
-        }
-
         .no-btn {
             background: #d15a6e;
             border: none;
@@ -150,7 +137,7 @@
             color: #fff0f0;
             border-radius: 70px;
             cursor: pointer;
-            transition: all 0.12s cubic-bezier(0.2, 0.9, 0.4, 1.2);
+            transition: all 0.15s cubic-bezier(0.2, 0.9, 0.4, 1.2);
             box-shadow: 0 8px 14px rgba(0, 0, 0, 0.2);
             border: 1px solid #ffc0cb;
             white-space: nowrap;
@@ -203,6 +190,72 @@
             touch-action: manipulation;
         }
 
+        /* مساحة الأسئلة */
+        .quiz-container {
+            margin-top: 20px;
+            background: #fff5f0;
+            border-radius: 40px;
+            padding: 20px;
+            text-align: right;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s ease;
+        }
+
+        .quiz-question {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #a13e4f;
+            margin-bottom: 20px;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .quiz-option {
+            background: #ffefef;
+            border: 2px solid #ffbfc9;
+            border-radius: 50px;
+            padding: 12px 18px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: right;
+            color: #5a2e3a;
+            font-weight: 500;
+        }
+
+        .quiz-option:hover {
+            background: #ffe0e5;
+            transform: scale(1.01);
+        }
+
+        .quiz-progress {
+            font-size: 0.9rem;
+            color: #b13b55;
+            margin-top: 10px;
+        }
+
+        .result-box {
+            background: linear-gradient(135deg, #ffe6f0, #ffd9e2);
+            border-radius: 40px;
+            padding: 25px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #a13e4f;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         @media (max-width: 550px) {
             .game-card {
                 padding: 20px 18px 30px;
@@ -212,14 +265,12 @@
                 padding: 12px 26px;
                 min-width: 120px;
             }
-            .question {
-                font-size: 1.6rem;
+            .quiz-question {
+                font-size: 1.2rem;
             }
-            .admire-text {
+            .quiz-option {
                 font-size: 1rem;
-            }
-            .buttons-battlefield {
-                min-height: 190px;
+                padding: 10px 14px;
             }
         }
     </style>
@@ -261,6 +312,7 @@
 
 <script>
     (function() {
+        // -------------------- عناصر اللعبة --------------------
         const noBtn = document.getElementById('noButton');
         const yesBtn = document.getElementById('yesButton');
         const battlefield = document.getElementById('battlefield');
@@ -269,8 +321,8 @@
         let attempts = 0;
         let gameFinished = false;
 
-        // دالة للتحقق من تداخل زر "لا" مع زر "نعم"
-        function isOverlappingWithYesButton() {
+        // -------------------- وظائف هروب "لا" --------------------
+        function isOverlappingWithYes() {
             const noRect = noBtn.getBoundingClientRect();
             const yesRect = yesBtn.getBoundingClientRect();
             return !(noRect.right < yesRect.left || 
@@ -279,85 +331,66 @@
                      noRect.top > yesRect.bottom);
         }
 
-        // دالة لتوليد موقع عشوائي لزر "لا" بحيث لا يتداخل مع زر "نعم"
-        function getNonOverlappingPosition() {
+        function moveNoButtonRandomly() {
+            if (gameFinished) return;
             const containerRect = battlefield.getBoundingClientRect();
             const btnWidth = noBtn.offsetWidth;
             const btnHeight = noBtn.offsetHeight;
-            const yesRect = yesBtn.getBoundingClientRect();
+            const maxLeft = Math.max(0, containerRect.width - btnWidth - 10);
+            const maxTop = Math.max(0, containerRect.height - btnHeight - 10);
             
-            const maxLeft = Math.max(0, containerRect.width - btnWidth - 5);
-            const maxTop = Math.max(0, containerRect.height - btnHeight - 5);
-            
-            let attemptsCount = 0;
-            const maxAttempts = 50;
-            
-            while (attemptsCount < maxAttempts) {
-                let randomLeft = Math.random() * maxLeft;
-                let randomTop = Math.random() * maxTop;
-                randomLeft = Math.min(Math.max(randomLeft, 5), maxLeft);
-                randomTop = Math.min(Math.max(randomTop, 5), maxTop);
-                
-                noBtn.style.left = randomLeft + 'px';
-                noBtn.style.top = randomTop + 'px';
-                
-                if (!isOverlappingWithYesButton()) {
-                    return { left: randomLeft, top: randomTop };
+            let newLeft, newTop;
+            let found = false;
+            for (let i = 0; i < 30; i++) {
+                newLeft = Math.random() * maxLeft;
+                newTop = Math.random() * maxTop;
+                newLeft = Math.min(Math.max(newLeft, 5), maxLeft);
+                newTop = Math.min(Math.max(newTop, 5), maxTop);
+                noBtn.style.left = newLeft + 'px';
+                noBtn.style.top = newTop + 'px';
+                if (!isOverlappingWithYes()) {
+                    found = true;
+                    break;
                 }
-                attemptsCount++;
             }
-            // إذا لم نجد موقعاً غير متداخل، نضعه في أقصى جهة معاكسة لزر نعم
-            const yesCenterX = (yesRect.left + yesRect.right) / 2;
-            const yesCenterY = (yesRect.top + yesRect.bottom) / 2;
-            const containerCenterX = containerRect.left + containerRect.width / 2;
-            const containerCenterY = containerRect.top + containerRect.height / 2;
-            
-            let dirX = yesCenterX < containerCenterX ? 1 : -1;
-            let dirY = yesCenterY < containerCenterY ? 1 : -1;
-            
-            let left = dirX === 1 ? maxLeft - btnWidth : 5;
-            let top = dirY === 1 ? maxTop - btnHeight : 5;
-            left = Math.min(Math.max(left, 5), maxLeft);
-            top = Math.min(Math.max(top, 5), maxTop);
-            return { left, top };
+            if (!found) {
+                const yesRect = yesBtn.getBoundingClientRect();
+                const containerCenterX = containerRect.left + containerRect.width / 2;
+                const containerCenterY = containerRect.top + containerRect.height / 2;
+                const yesCenterX = (yesRect.left + yesRect.right) / 2;
+                const yesCenterY = (yesRect.top + yesRect.bottom) / 2;
+                let dirX = yesCenterX < containerCenterX ? 1 : -1;
+                let dirY = yesCenterY < containerCenterY ? 1 : -1;
+                newLeft = dirX === 1 ? maxLeft - btnWidth : 5;
+                newTop = dirY === 1 ? maxTop - btnHeight : 5;
+                newLeft = Math.min(Math.max(newLeft, 5), maxLeft);
+                newTop = Math.min(Math.max(newTop, 5), maxTop);
+                noBtn.style.left = newLeft + 'px';
+                noBtn.style.top = newTop + 'px';
+            }
         }
-        
-        function moveNoButtonRandomly() {
-            if (gameFinished) return;
-            const { left, top } = getNonOverlappingPosition();
-            noBtn.style.left = left + 'px';
-            noBtn.style.top = top + 'px';
-        }
-        
-        // وضع الزرين بجانب بعضهما في البداية
+
         function setInitialNoPosition() {
             if (gameFinished) return;
             noBtn.style.position = 'absolute';
-            // نضع زر "لا" بجانب زر "نعم" مباشرة
             const yesRect = yesBtn.getBoundingClientRect();
             const containerRect = battlefield.getBoundingClientRect();
             const btnWidth = noBtn.offsetWidth;
             const btnHeight = noBtn.offsetHeight;
-            
             let left = yesRect.right - containerRect.left + 20;
             let top = yesRect.top - containerRect.top;
-            
             const maxLeft = Math.max(0, containerRect.width - btnWidth - 10);
             const maxTop = Math.max(0, containerRect.height - btnHeight - 10);
             left = Math.min(Math.max(left, 10), maxLeft);
             top = Math.min(Math.max(top, 10), maxTop);
-            
             noBtn.style.left = left + 'px';
             noBtn.style.top = top + 'px';
         }
-        
+
         function handleResize() {
-            if (gameFinished) return;
-            const { left, top } = getNonOverlappingPosition();
-            noBtn.style.left = left + 'px';
-            noBtn.style.top = top + 'px';
+            if (!gameFinished && noBtn) moveNoButtonRandomly();
         }
-        
+
         function incrementAttempt() {
             if (gameFinished) return;
             attempts++;
@@ -368,7 +401,7 @@
                 setTimeout(() => { if(counterDiv) counterDiv.style.transform = 'scale(1)'; }, 150);
             }
         }
-        
+
         function showFloatingMessage(msg, element) {
             let floatMsg = document.createElement('div');
             floatMsg.innerText = msg;
@@ -389,16 +422,16 @@
             document.body.appendChild(floatMsg);
             setTimeout(() => { floatMsg.remove(); }, 700);
         }
-        
+
         let escapeCooldown = false;
         function escapeNo() {
             if (gameFinished) return;
             if (escapeCooldown) return;
             escapeCooldown = true;
             moveNoButtonRandomly();
-            setTimeout(() => { escapeCooldown = false; }, 80);
+            setTimeout(() => { escapeCooldown = false; }, 100);
         }
-        
+
         function onNoClick(e) {
             e.preventDefault();
             e.stopPropagation();
@@ -410,14 +443,12 @@
             showFloatingMessage("🚫 ما راح تقدري تضغطيها! 😜", noBtn);
             return false;
         }
-        
+
         function onNoMouseEnter(e) {
             if (gameFinished) return;
             escapeNo();
-            noBtn.style.transition = 'all 0.1s ease';
-            setTimeout(() => { if(noBtn) noBtn.style.transition = 'all 0.12s cubic-bezier(0.2, 0.9, 0.4, 1.2)'; }, 120);
         }
-        
+
         function onNoTouchStart(e) {
             e.preventDefault();
             if (gameFinished) return;
@@ -426,8 +457,125 @@
             showFloatingMessage("🏃‍♂️ هههه زر لا هارب!", noBtn);
             return false;
         }
-        
-        // دالة نجاح "نعم" - تعمل على الجوال وسطح المكتب
+
+        // -------------------- الأسئلة والمسابقة --------------------
+        const questions = [
+            { text: "ما هو الشيء الذي يجعلكِ سعيدة جداً؟", options: ["قضاء الوقت مع الأصدقاء والعائلة", "تحقيق هدف كنتِ تسعين له", "السفر واكتشاف أماكن جديدة", "الاسترخاء مع كتاب أو فيلم مفضل"] },
+            { text: "كيف تقضين وقت فراغكِ عادة؟", options: ["أمارس هواية أحبها (رسم، موسيقى، رياضة...)", "أتحدث مع أصدقائي أو أتواصل معهم", "أتعلم شيئاً جديداً (لغة، مهارة...)", "أنام أو أتابع المسلسلات"] },
+            { text: "أي نوع من الأفلام أو المسلسلات تفضلين؟", options: ["رومانسي / دراما", "كوميدي / خفيف", "أكشن / مغامرات", "وثائقي / علمي"] },
+            { text: "لو كان بإمكانك السفر إلى أي مكان في العالم الآن، أين ستذهبين؟", options: ["مدينة أوروبية هادئة (مثل باريس أو سويسرا)", "جزيرة استوائية مع شاطئ", "مكان مليء بالتاريخ والثقافة", "مغامرة في الطبيعة (جبال، غابات)"] },
+            { text: "ما هي الصفة التي تحبينها أكثر في نفسك؟", options: ["التفاؤل والإيجابية", "الصدق والصراحة", "الإبداع والابتكار", "الهدوء والاستماع للآخرين"] },
+            { text: "كيف تتصرفين عندما تواجهين مشكلة صعبة؟", options: ["أفكر بها وحدي وأحاول إيجاد حل", "أطلب المساعدة من شخص أثق به", "أتجنب التفكير فيها لفترة ثم أواجهها", "أبحث عن معلومات أكثر قبل اتخاذ قرار"] },
+            { text: "ما هو اللون المفضل لديكِ؟", options: ["الأزرق / الأخضر", "الوردي / الأحمر", "الأسود / الرمادي", "الأصفر / البرتقالي"] },
+            { text: "أي من هذه العبارات تصفكِ أكثر؟", options: ["أحب التخطيط والتنظيم", "أحب العفوية والمفاجآت", "أجمع بين التخطيط والمرونة", "لا أحب الالتزامات كثيراً"] },
+            { text: "ما هو نوع الطعام الذي تفضلينه؟", options: ["حلويات وحلويات 😊", "أطباق رئيسية شهية", "خفيف وصحي", "مغامرات في أكلات جديدة"] },
+            { text: "بأي شيء تحبين أن يُذكر اسمكِ؟", options: ["بسمعة طيبة وأخلاق", "بإنجازاتي ونجاحاتي", "بكوني شخصاً محبوباً من حولي", "بضحكتي وروحي المرحة"] }
+        ];
+
+        let currentQuestionIndex = 0;
+        let answers = [];
+
+        // تحليل الإجابات وتوليد ملخص
+        function generateSummary() {
+            let summary = "";
+            // بناء بسيط: نعطي تحليل بناءً على أول إجابة أو أكثر
+            const firstAnswer = answers[0];
+            const secondAnswer = answers[1];
+            const thirdAnswer = answers[2];
+            const fourthAnswer = answers[3];
+            const fifthAnswer = answers[4];
+            
+            if (answers[0] === 0 || answers[0] === 1) summary += "💖 تحبين العلاقات الإنسانية والاهتمام بالآخرين. ";
+            if (answers[1] === 0 || answers[1] === 2) summary += "🎨 لديكِ روح الإبداع وحب التعلم. ";
+            if (answers[2] === 1) summary += "😄 روح الدعابة والضحك تملأ حياتك. ";
+            if (answers[3] === 1 || answers[3] === 3) summary += "🌊 شغوفة بالمغامرة واستكشاف الجديد. ";
+            if (answers[4] === 0) summary += "✨ التفاؤل والإيجابية هما عنوانك. ";
+            if (answers[4] === 2) summary += "🎭 مبدعة ومبتكرة بطبعك. ";
+            if (answers[5] === 1) summary += "🤝 تعتمدين على من حولك وتثقين بهم. ";
+            if (answers[6] === 1) summary += "💗 أنثوية وودودة، الألوان الزاهية تعبر عنك. ";
+            if (answers[7] === 0) summary += "📋 منظمة وتحبين التخطيط. ";
+            if (answers[7] === 1) summary += "🎉 عفوية ومليئة بالمفاجآت السارة. ";
+            if (answers[8] === 0) summary += "🍰 للحلويات مكانة خاصة في قلبك! ";
+            if (answers[9] === 0) summary += "🌟 السمعة الطيبة والأخلاق هي قيمتك الكبرى. ";
+            if (answers[9] === 3) summary += "😁 ضحكتك وروحك المرحة تجذب الجميع إليك. ";
+            
+            if (summary === "") summary = "أنتِ شخصية متعددة المواهب والاهتمامات، مزيج رائع من الجد والمرح! 💫";
+            
+            return summary + "\n\n✨ أنتِ رائعة كما أنتِ، وأنا معجب بهذه الشخصية الجميلة ✨";
+        }
+
+        function displayQuestion() {
+            const q = questions[currentQuestionIndex];
+            let html = `
+                <div class="quiz-container" id="quizContainer">
+                    <div class="quiz-question">${currentQuestionIndex+1}. ${q.text}</div>
+                    <div class="quiz-options">
+            `;
+            q.options.forEach((opt, idx) => {
+                html += `<div class="quiz-option" data-opt-index="${idx}">${String.fromCharCode(65+idx)} - ${opt}</div>`;
+            });
+            html += `</div><div class="quiz-progress">السؤال ${currentQuestionIndex+1} من ${questions.length}</div></div>`;
+            
+            const battlefieldDiv = document.querySelector('.buttons-battlefield');
+            // إزالة أي حاوية أسئلة سابقة
+            const oldQuiz = document.getElementById('quizContainer');
+            if (oldQuiz) oldQuiz.remove();
+            battlefieldDiv.insertAdjacentHTML('afterend', html);
+            
+            // إضافة مستمعات للخيارات
+            document.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    const selectedIdx = parseInt(opt.dataset.optIndex);
+                    answers.push(selectedIdx);
+                    currentQuestionIndex++;
+                    if (currentQuestionIndex < questions.length) {
+                        displayQuestion();
+                    } else {
+                        showResult();
+                    }
+                });
+                // تحسين اللمس
+                opt.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const selectedIdx = parseInt(opt.dataset.optIndex);
+                    answers.push(selectedIdx);
+                    currentQuestionIndex++;
+                    if (currentQuestionIndex < questions.length) {
+                        displayQuestion();
+                    } else {
+                        showResult();
+                    }
+                }, { passive: false });
+            });
+        }
+
+        function showResult() {
+            const summary = generateSummary();
+            const battlefieldDiv = document.querySelector('.buttons-battlefield');
+            const oldQuiz = document.getElementById('quizContainer');
+            if (oldQuiz) oldQuiz.remove();
+            
+            const resultHtml = `
+                <div class="result-box" id="resultBox">
+                    🌸🌸🌸 ملخص شخصيتك الرائعة 🌸🌸🌸<br><br>
+                    ${summary}<br><br>
+                    💖 شكراً لمشاركتك في المسابقة 💖<br>
+                    <div style="font-size: 2rem; margin-top: 15px;">💘😍💘</div>
+                </div>
+            `;
+            battlefieldDiv.insertAdjacentHTML('afterend', resultHtml);
+            
+            // إطلاق كونفيتي إضافي
+            canvasConfetti({
+                particleCount: 300,
+                spread: 120,
+                origin: { y: 0.5 },
+                colors: ['#ff99cc', '#ff6f91', '#ffb347', '#ffd966'],
+                shapes: ['heart', 'circle']
+            });
+        }
+
+        // -------------------- الضغط على "نعم" --------------------
         function onYesClick(e) {
             if (gameFinished) return;
             gameFinished = true;
@@ -440,30 +588,10 @@
             noBtn.style.opacity = '0.5';
             noBtn.style.filter = 'grayscale(0.2)';
             
-            // إخفاء الأزرار
             yesBtn.style.display = 'none';
             noBtn.style.display = 'none';
             
-            // إضافة رسالة النجاح
-            const battlefieldDiv = document.querySelector('.buttons-battlefield');
-            const msgContainer = document.createElement('div');
-            msgContainer.style.margin = '20px auto';
-            msgContainer.style.background = 'linear-gradient(135deg, #ffdde1, #ee9ca7)';
-            msgContainer.style.padding = '20px';
-            msgContainer.style.borderRadius = '60px';
-            msgContainer.style.fontSize = '1.5rem';
-            msgContainer.style.fontWeight = 'bold';
-            msgContainer.style.color = '#941f44';
-            msgContainer.style.textAlign = 'center';
-            msgContainer.style.boxShadow = '0 8px 20px rgba(0,0,0,0.2)';
-            msgContainer.innerHTML = `
-                🌸💗 زينب الجميلة! 💗🌸<br>
-                ❤️ شكراً لأنكِ جعلتِ قلبي يفرح ❤️<br>
-                <div style="font-size: 3rem; margin-top: 12px;">💘😘💘</div>
-            `;
-            battlefieldDiv.appendChild(msgContainer);
-            
-            // تأثيرات احتفالية
+            // إطلاق كونفيتي أولي
             canvasConfetti({
                 particleCount: 200,
                 spread: 100,
@@ -472,35 +600,18 @@
                 colors: ['#ff6f91', '#ffb6c1', '#ff4d6d', '#ff99cc', '#ffd966'],
                 shapes: ['heart', 'circle']
             });
-            canvasConfetti({
-                particleCount: 120,
-                spread: 140,
-                origin: { y: 0.3, x: 0.2 },
-                startVelocity: 25,
-                colors: ['#ff80ab', '#ff4081', '#ffc0cb']
-            });
-            canvasConfetti({
-                particleCount: 120,
-                spread: 140,
-                origin: { y: 0.4, x: 0.8 },
-                startVelocity: 25,
-                colors: ['#ff5e7e', '#ffb347']
-            });
             
-            let confettiInterval = setInterval(() => {
-                canvasConfetti({
-                    particleCount: 70,
-                    spread: 65,
-                    origin: { y: 0.5, x: Math.random() },
-                    colors: ['#ff6b8b', '#ff9fae', '#ffd1dc']
-                });
-            }, 300);
-            setTimeout(() => clearInterval(confettiInterval), 2000);
+            // عرض أول سؤال
+            currentQuestionIndex = 0;
+            answers = [];
+            displayQuestion();
             
+            // تحديث عداد المحاولات
             attemptSpan.innerText = attempts + " 💞 فشلتي في الهروب 😂";
             const lastSpan = document.querySelector('.counter-box span:last-child');
-            if (lastSpan) lastSpan.innerHTML = "🥰 لكن نعم انتصرت! 🥰";
+            if (lastSpan) lastSpan.innerHTML = "🥰 الآن تعالي نتعرف عليكِ 🥰";
             
+            // تأثير قلوب متساقطة لفترة
             const heartsRain = setInterval(() => {
                 if (gameFinished) {
                     let heartSpan = document.createElement('div');
@@ -523,8 +634,8 @@
             }, 400);
             setTimeout(() => clearInterval(heartsRain), 5000);
         }
-        
-        // تهيئة اللعبة
+
+        // -------------------- تهيئة اللعبة --------------------
         function initGame() {
             noBtn.style.position = 'absolute';
             noBtn.style.display = 'inline-block';
@@ -535,12 +646,10 @@
             noBtn.addEventListener('mouseenter', onNoMouseEnter);
             noBtn.addEventListener('touchstart', onNoTouchStart, { passive: false });
             
-            // تأكيد عمل زر نعم على الجوال باستخدام click + touchstart
             yesBtn.addEventListener('click', onYesClick);
             yesBtn.addEventListener('touchstart', function(e) {
-                // منع التداخل مع الـ click ولكن نضمن التنفيذ
                 if (!gameFinished) {
-                    e.preventDefault(); // منع التمرير العرضي
+                    e.preventDefault();
                     onYesClick(e);
                 }
             }, { passive: false });
@@ -550,14 +659,8 @@
         }
         
         initGame();
-        
-        window.addEventListener('resize', () => {
-            if (!gameFinished && noBtn) handleResize();
-        });
-        
-        const resizeObserver = new ResizeObserver(() => {
-            if (!gameFinished && noBtn) handleResize();
-        });
+        window.addEventListener('resize', handleResize);
+        const resizeObserver = new ResizeObserver(() => { if (!gameFinished && noBtn) handleResize(); });
         if (battlefield) resizeObserver.observe(battlefield);
     })();
 </script>
