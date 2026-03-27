@@ -4,14 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>لعبة قلب زينب | هل تُعجبي بي؟ 💖</title>
-    <!-- Canvas Confetti library لإطلاق الزهور والقلوب عند النجاح -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none; /* منع تحديد النص لتحسين اللعب */
+            user-select: none;
         }
 
         body {
@@ -27,7 +26,6 @@
             overflow-x: hidden;
         }
 
-        /* بطاقة اللعبة الرئيسية */
         .game-card {
             max-width: 700px;
             width: 100%;
@@ -101,7 +99,6 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.05);
         }
 
-        /* منطقة الأزرار - تحتوي على زر نعم ثابت وزر لا متحرك (absolute) */
         .buttons-battlefield {
             position: relative;
             min-height: 170px;
@@ -110,9 +107,12 @@
             border-radius: 50px;
             padding: 20px 10px;
             transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
         }
 
-        /* الزر الثابت "نعم" */
         .yes-btn {
             background: linear-gradient(120deg, #43e97b, #38f9a0);
             border: none;
@@ -130,8 +130,8 @@
             letter-spacing: 1px;
             width: auto;
             min-width: 160px;
-            z-index: 5;
             position: relative;
+            z-index: 30;
         }
 
         .yes-btn:hover {
@@ -140,7 +140,6 @@
             box-shadow: 0 15px 25px rgba(0, 0, 0, 0.2);
         }
 
-        /* زر "لا" المراوغ - يتم التحكم بموقعه بواسطة JS */
         .no-btn {
             background: #d15a6e;
             border: none;
@@ -162,7 +161,6 @@
             min-width: 140px;
         }
 
-        /* عداد محاولات الضغط على لا (فكاهي) */
         .counter-box {
             background: #ffd9df;
             border-radius: 40px;
@@ -192,24 +190,6 @@
             color: #a12242;
         }
 
-        /* رسالة النجاح بعد الضغط على نعم */
-        .success-message {
-            margin-top: 20px;
-            background: #ffdf6e;
-            border-radius: 50px;
-            padding: 15px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #9b3b50;
-            animation: glow 1s infinite alternate;
-            border: 1px solid #ffb347;
-        }
-
-        @keyframes glow {
-            from { text-shadow: 0 0 2px pink; box-shadow: 0 0 5px #ffb347;}
-            to { text-shadow: 0 0 10px #ff8585; box-shadow: 0 0 20px #ff7e6b;}
-        }
-
         footer {
             font-size: 0.8rem;
             margin-top: 25px;
@@ -222,7 +202,6 @@
             touch-action: manipulation;
         }
 
-        /* تكيف مع الشاشات الصغيرة */
         @media (max-width: 550px) {
             .game-card {
                 padding: 20px 18px 30px;
@@ -252,7 +231,6 @@
         <i>💗</i>
     </h1>
 
-    <!-- عبارات الإعجاب -->
     <div class="admire-text">
         <p>✨ <span class="heart-icon">💖</span> زينب الجميلة ✨</p>
         <p>أردت أن أهديكِ هذه اللعبة البسيطة..<br>
@@ -264,13 +242,11 @@
         ❓ هل تُعجبي بي؟ ❓
     </div>
 
-    <!-- ساحة المعركة (الأزرار) -->
     <div class="buttons-battlefield" id="battlefield">
         <button class="yes-btn" id="yesButton">نعم 💘</button>
         <button class="no-btn" id="noButton">لا 😅</button>
     </div>
 
-    <!-- عداد فكاهي لعدد محاولات الضغط على لا (التي باءت بالفشل) -->
     <div class="counter-box">
         <span>🏃‍♀️ محاولات الإمساك بـ "لا" 🏃‍♂️</span>
         <span id="attemptCount">0</span>
@@ -284,101 +260,112 @@
 
 <script>
     (function() {
-        // العناصر
         const noBtn = document.getElementById('noButton');
         const yesBtn = document.getElementById('yesButton');
         const battlefield = document.getElementById('battlefield');
         const attemptSpan = document.getElementById('attemptCount');
         
-        let attempts = 0;           // عدد محاولات الضغط على زر لا (فشل تام)
-        let gameFinished = false;    // هل تم الضغط على نعم وانتهت اللعبة؟
+        let attempts = 0;
+        let gameFinished = false;
+
+        // دالة للتحقق من تداخل زر "لا" مع زر "نعم"
+        function isOverlappingWithYesButton() {
+            const noRect = noBtn.getBoundingClientRect();
+            const yesRect = yesBtn.getBoundingClientRect();
+            return !(noRect.right < yesRect.left || 
+                     noRect.left > yesRect.right || 
+                     noRect.bottom < yesRect.top || 
+                     noRect.top > yesRect.bottom);
+        }
+
+        // دالة لتوليد موقع عشوائي لزر "لا" بحيث لا يتداخل مع زر "نعم"
+        function getNonOverlappingPosition() {
+            const containerRect = battlefield.getBoundingClientRect();
+            const btnWidth = noBtn.offsetWidth;
+            const btnHeight = noBtn.offsetHeight;
+            const yesRect = yesBtn.getBoundingClientRect();
+            
+            const maxLeft = Math.max(0, containerRect.width - btnWidth - 5);
+            const maxTop = Math.max(0, containerRect.height - btnHeight - 5);
+            
+            let attemptsCount = 0;
+            const maxAttempts = 50;
+            
+            while (attemptsCount < maxAttempts) {
+                let randomLeft = Math.random() * maxLeft;
+                let randomTop = Math.random() * maxTop;
+                randomLeft = Math.min(Math.max(randomLeft, 5), maxLeft);
+                randomTop = Math.min(Math.max(randomTop, 5), maxTop);
+                
+                noBtn.style.left = randomLeft + 'px';
+                noBtn.style.top = randomTop + 'px';
+                
+                if (!isOverlappingWithYesButton()) {
+                    return { left: randomLeft, top: randomTop };
+                }
+                attemptsCount++;
+            }
+            // إذا لم نجد موقعاً غير متداخل، نضعه في أقصى جهة معاكسة لزر نعم
+            const yesCenterX = (yesRect.left + yesRect.right) / 2;
+            const yesCenterY = (yesRect.top + yesRect.bottom) / 2;
+            const containerCenterX = containerRect.left + containerRect.width / 2;
+            const containerCenterY = containerRect.top + containerRect.height / 2;
+            
+            let dirX = yesCenterX < containerCenterX ? 1 : -1;
+            let dirY = yesCenterY < containerCenterY ? 1 : -1;
+            
+            let left = dirX === 1 ? maxLeft - btnWidth : 5;
+            let top = dirY === 1 ? maxTop - btnHeight : 5;
+            left = Math.min(Math.max(left, 5), maxLeft);
+            top = Math.min(Math.max(top, 5), maxTop);
+            return { left, top };
+        }
         
-        // دالة لتحديث موقع زر "لا" بطريقة عشوائية داخل ساحة المعركة (يهرب بعيداً)
+        // وظيفة لتحريك زر "لا" بشكل عشوائي بعيداً عن زر "نعم"
         function moveNoButtonRandomly() {
             if (gameFinished) return;
-            
-            const containerRect = battlefield.getBoundingClientRect();
-            const btnWidth = noBtn.offsetWidth;
-            const btnHeight = noBtn.offsetHeight;
-            
-            // حساب أقصى إزاحة ممكنة مع ترك مسافة 5px من الحواف
-            const maxLeft = Math.max(0, containerRect.width - btnWidth - 5);
-            const maxTop = Math.max(0, containerRect.height - btnHeight - 5);
-            
-            // إذا كانت المساحة صغيرة جداً، نضع الزر في أي مكان ممكن
-            if (maxLeft <= 0 || maxTop <= 0) {
-                let left = Math.random() * (containerRect.width - btnWidth);
-                let top = Math.random() * (containerRect.height - btnHeight);
-                left = Math.min(Math.max(left, 2), containerRect.width - btnWidth - 2);
-                top = Math.min(Math.max(top, 2), containerRect.height - btnHeight - 2);
-                noBtn.style.left = left + 'px';
-                noBtn.style.top = top + 'px';
-                return;
-            }
-            
-            // اختيار موقع عشوائي جديد بعيد عن الموقع الحالي (اختياري)
-            let randomLeft = Math.random() * maxLeft;
-            let randomTop = Math.random() * maxTop;
-            
-            // نضمن عدم الخروج عن الحدود
-            randomLeft = Math.min(Math.max(randomLeft, 5), maxLeft);
-            randomTop = Math.min(Math.max(randomTop, 5), maxTop);
-            
-            noBtn.style.left = randomLeft + 'px';
-            noBtn.style.top = randomTop + 'px';
-        }
-        
-        // دالة لبدء وضع زر "لا" في أول مرة بطريقة آمنة
-        function setInitialNoPosition() {
-            if (gameFinished) return;
-            // نضعه في زاوية بعيدة في البداية
-            const containerRect = battlefield.getBoundingClientRect();
-            const btnWidth = noBtn.offsetWidth;
-            const btnHeight = noBtn.offsetHeight;
-            const containerWidth = containerRect.width;
-            const containerHeight = containerRect.height;
-            
-            let left = containerWidth - btnWidth - 20;
-            let top = containerHeight - btnHeight - 20;
-            if (left < 5) left = 10;
-            if (top < 5) top = 10;
-            if (left > containerWidth - btnWidth) left = containerWidth - btnWidth - 10;
-            if (top > containerHeight - btnHeight) top = containerHeight - btnHeight - 10;
+            const { left, top } = getNonOverlappingPosition();
             noBtn.style.left = left + 'px';
             noBtn.style.top = top + 'px';
-            noBtn.style.position = 'absolute';
         }
         
-        // تحديث موقع زر "لا" عند تغيير حجم النافذة
-        function handleResize() {
+        // وضع الزرين بجانب بعضهما في البداية
+        function setInitialNoPosition() {
             if (gameFinished) return;
+            noBtn.style.position = 'absolute';
+            // نضع زر "لا" بجانب زر "نعم" مباشرة
+            const yesRect = yesBtn.getBoundingClientRect();
             const containerRect = battlefield.getBoundingClientRect();
             const btnWidth = noBtn.offsetWidth;
             const btnHeight = noBtn.offsetHeight;
-            let currentLeft = parseFloat(noBtn.style.left);
-            let currentTop = parseFloat(noBtn.style.top);
             
-            if (isNaN(currentLeft)) currentLeft = 0;
-            if (isNaN(currentTop)) currentTop = 0;
+            // حساب المسافة: يمين زر نعم + 20px (الفجوة بينهما)
+            let left = yesRect.right - containerRect.left + 20;
+            let top = yesRect.top - containerRect.top;
             
-            const maxLeft = Math.max(0, containerRect.width - btnWidth - 5);
-            const maxTop = Math.max(0, containerRect.height - btnHeight - 5);
+            // التأكد من عدم الخروج عن الحاوية
+            const maxLeft = Math.max(0, containerRect.width - btnWidth - 10);
+            const maxTop = Math.max(0, containerRect.height - btnHeight - 10);
+            left = Math.min(Math.max(left, 10), maxLeft);
+            top = Math.min(Math.max(top, 10), maxTop);
             
-            let newLeft = Math.min(currentLeft, maxLeft);
-            let newTop = Math.min(currentTop, maxTop);
-            newLeft = Math.max(newLeft, 5);
-            newTop = Math.max(newTop, 5);
-            
-            noBtn.style.left = newLeft + 'px';
-            noBtn.style.top = newTop + 'px';
+            noBtn.style.left = left + 'px';
+            noBtn.style.top = top + 'px';
         }
         
-        // زيادة عدد المحاولات الفاشلة على زر "لا"
+        function handleResize() {
+            if (gameFinished) return;
+            // عند تغيير الحجم نحافظ على الوضعية إذا كانت لا تزال بجانب بعضهما؟
+            // لكن الأفضل إعادة ضبط الموضع بشكل آمن
+            const { left, top } = getNonOverlappingPosition();
+            noBtn.style.left = left + 'px';
+            noBtn.style.top = top + 'px';
+        }
+        
         function incrementAttempt() {
             if (gameFinished) return;
             attempts++;
             attemptSpan.innerText = attempts;
-            // تأثير هز للعداد
             const counterDiv = document.querySelector('.counter-box');
             if (counterDiv) {
                 counterDiv.style.transform = 'scale(1.05)';
@@ -386,7 +373,6 @@
             }
         }
         
-        // عرض رسالة عائمة صغيرة قرب الزر
         function showFloatingMessage(msg, element) {
             let floatMsg = document.createElement('div');
             floatMsg.innerText = msg;
@@ -408,31 +394,27 @@
             setTimeout(() => { floatMsg.remove(); }, 700);
         }
         
-        // دالة الهروب السريع (تتحرك فوراً)
         let escapeCooldown = false;
         function escapeNo() {
             if (gameFinished) return;
-            if (escapeCooldown) return; // منع التكرار المفرط
+            if (escapeCooldown) return;
             escapeCooldown = true;
             moveNoButtonRandomly();
             setTimeout(() => { escapeCooldown = false; }, 80);
         }
         
-        // معالج محاولة الضغط على زر "لا"
         function onNoClick(e) {
             e.preventDefault();
             e.stopPropagation();
             if (gameFinished) return;
-            
             incrementAttempt();
-            escapeNo(); // يهرب فوراً
+            escapeNo();
             noBtn.style.transform = 'scale(0.95)';
             setTimeout(() => { if(noBtn) noBtn.style.transform = ''; }, 120);
             showFloatingMessage("🚫 ما راح تقدري تضغطيها! 😜", noBtn);
             return false;
         }
         
-        // معالج تمرير الماوس فوق لا (يهرب فوراً)
         function onNoMouseEnter(e) {
             if (gameFinished) return;
             escapeNo();
@@ -440,7 +422,6 @@
             setTimeout(() => { if(noBtn) noBtn.style.transition = 'all 0.12s cubic-bezier(0.2, 0.9, 0.4, 1.2)'; }, 120);
         }
         
-        // المعالج للأجهزة اللمسية
         function onNoTouchStart(e) {
             e.preventDefault();
             if (gameFinished) return;
@@ -450,12 +431,10 @@
             return false;
         }
         
-        // معالج نجاح الضغط على "نعم"
         function onYesClick(e) {
             if (gameFinished) return;
             gameFinished = true;
             
-            // إزالة جميع مستمعي الأحداث من زر "لا"
             noBtn.removeEventListener('click', onNoClick);
             noBtn.removeEventListener('mouseenter', onNoMouseEnter);
             noBtn.removeEventListener('touchstart', onNoTouchStart);
@@ -463,11 +442,9 @@
             noBtn.style.opacity = '0.5';
             noBtn.style.filter = 'grayscale(0.2)';
             
-            // إخفاء الأزرار
             yesBtn.style.display = 'none';
             noBtn.style.display = 'none';
             
-            // إضافة رسالة جميلة في مكان الأزرار
             const battlefieldDiv = document.querySelector('.buttons-battlefield');
             const msgContainer = document.createElement('div');
             msgContainer.style.margin = '20px auto';
@@ -482,12 +459,10 @@
             msgContainer.innerHTML = `
                 🌸💗 زينب الجميلة! 💗🌸<br>
                 ❤️ شكراً لأنكِ جعلتِ قلبي يفرح ❤️<br>
-                🥰 أنتِ حبي الأول والأخير 🥰
                 <div style="font-size: 3rem; margin-top: 12px;">💘😘💘</div>
             `;
             battlefieldDiv.appendChild(msgContainer);
             
-            // إطلاق مؤثرات كونفيتي
             canvasConfetti({
                 particleCount: 200,
                 spread: 100,
@@ -521,12 +496,10 @@
             }, 300);
             setTimeout(() => clearInterval(confettiInterval), 2000);
             
-            // تحديث العداد
             attemptSpan.innerText = attempts + " 💞 فشلتي في الهروب 😂";
             const lastSpan = document.querySelector('.counter-box span:last-child');
             if (lastSpan) lastSpan.innerHTML = "🥰 لكن نعم انتصرت! 🥰";
             
-            // إظهار قلوب متساقطة
             const heartsRain = setInterval(() => {
                 if (gameFinished) {
                     let heartSpan = document.createElement('div');
@@ -550,11 +523,11 @@
             setTimeout(() => clearInterval(heartsRain), 5000);
         }
         
-        // تهيئة اللعبة
         function initGame() {
             noBtn.style.position = 'absolute';
             noBtn.style.display = 'inline-block';
             battlefield.style.position = 'relative';
+            // نضبط الوضع المبدئي للزرين بجانب بعضهما
             setInitialNoPosition();
             
             noBtn.addEventListener('click', onNoClick);
@@ -568,7 +541,6 @@
         
         initGame();
         
-        // مراقبة تغيير الحجم
         window.addEventListener('resize', () => {
             if (!gameFinished && noBtn) handleResize();
         });
@@ -578,7 +550,6 @@
         });
         if (battlefield) resizeObserver.observe(battlefield);
         
-        // منع التكبير باللمس على زر نعم
         yesBtn.addEventListener('touchstart', (e) => {
             if (!gameFinished) e.preventDefault();
         }, { passive: false });
